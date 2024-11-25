@@ -1,0 +1,3 @@
+/Users/kaushikpaul/Desktop/spaceinvaders/cmake-build-debug/CMakeFiles/spaceinvaders.dir
+/Users/kaushikpaul/Desktop/spaceinvaders/cmake-build-debug/CMakeFiles/edit_cache.dir
+/Users/kaushikpaul/Desktop/spaceinvaders/cmake-build-debug/CMakeFiles/rebuild_cache.dir

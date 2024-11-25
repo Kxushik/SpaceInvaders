@@ -1,0 +1,1 @@
+/Library/Developer/CommandLineTools/usr/bin/c++ -g -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX14.4.sdk -mmacosx-version-min=14.3 -Wl,-search_paths_first -Wl,-headerpad_max_install_names CMakeFiles/spaceinvaders.dir/main.cpp.o -o spaceinvaders  -Wl,-rpath,/usr/local/lib /usr/local/lib/libglfw.3.4.dylib -framework OpenGL /usr/local/lib/libGLEW.dylib
