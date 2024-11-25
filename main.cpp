@@ -3,7 +3,6 @@
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
 
-
 #define GL_ERROR_CASE(glerror)\
     case glerror: snprintf(error, sizeof(error), "%s", #glerror)
 
@@ -33,41 +32,52 @@ void validate_shader(GLuint shader, const char *file = 0){
     GLsizei length = 0;
 
     glGetShaderInfoLog(shader, BUFFER_SIZE, &length, buffer);
-    if (length > 0){
-        printf("Shader %d(%s) compike error: %s\n", shader, (file ? file:""), buffer);
 
+    if(length>0){
+        printf("Shader %d(%s) compile error: %s\n", shader, (file? file: ""), buffer);
     }
 }
-bool validate_program(GLuint program) {
+
+bool validate_program(GLuint program){
     static const GLsizei BUFFER_SIZE = 512;
     GLchar buffer[BUFFER_SIZE];
     GLsizei length = 0;
+
     glGetProgramInfoLog(program, BUFFER_SIZE, &length, buffer);
-    if (length > 0) {
+
+    if(length>0){
         printf("Program %d link error: %s\n", program, buffer);
         return false;
     }
+
     return true;
 }
+
 void error_callback(int error, const char* description)
 {
     fprintf(stderr, "Error: %s\n", description);
 }
-struct  Buffer {
+
+struct Buffer
+{
     size_t width, height;
-    uint32_t* data; // PIXEL, 4 8-bit colors
+    uint32_t* data;
 };
-// Sprite
-struct Sprite {
+
+struct Sprite
+{
     size_t width, height;
     uint8_t* data;
 };
-//Iterate over all pixels and set color
-void buffer_clear(Buffer* buffer, uint32_t color) {
-    for (size_t i =0; i < buffer->width * buffer->height; ++i) {
+
+void buffer_clear(Buffer* buffer, uint32_t color)
+{
+    for(size_t i = 0; i < buffer->width * buffer->height; ++i)
+    {
         buffer->data[i] = color;
     }
 }
+
 bool sprite_overlap_check(
     const Sprite& sp_a, size_t x_a, size_t y_a,
     const Sprite& sp_b, size_t x_b, size_t y_b
@@ -85,6 +95,7 @@ bool sprite_overlap_check(
 
     return false;
 }
+
 void buffer_draw_sprite(Buffer* buffer, const Sprite& sprite, size_t x, size_t y, uint32_t color)
 {
     for(size_t xi = 0; xi < sprite.width; ++xi)
@@ -100,18 +111,18 @@ void buffer_draw_sprite(Buffer* buffer, const Sprite& sprite, size_t x, size_t y
         }
     }
 }
-// Defines uint32_t to rgb values
-uint32_t rgb_to_uint32(uint8_t r, uint8_t g, uint8_t b) {
-    //return (255 << 24) | (b << 16) | (g << 8) | r;
-    return (r << 24 ) | (g << 16) | (b << 8) | 255;
-}
-int main(int argc, char* argv[]) {
 
+uint32_t rgb_to_uint32(uint8_t r, uint8_t g, uint8_t b)
+{
+    return (r << 24) | (g << 16) | (b << 8) | 255;
+}
+
+int main(int argc, char* argv[])
+{
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
+
     glfwSetErrorCallback(error_callback);
-
-
 
     if (!glfwInit()) return -1;
 
@@ -149,31 +160,30 @@ int main(int argc, char* argv[]) {
 
     glClearColor(1.0, 0.0, 0.0, 1.0);
 
-    //uint32_t clear_color = rgb_to_uint32(0, 128, 0);
+    // Create graphics buffer
     Buffer buffer;
-    buffer.width = buffer_width;
+    buffer.width  = buffer_width;
     buffer.height = buffer_height;
-    buffer.data = new uint32_t[buffer.width * buffer.height];
+    buffer.data   = new uint32_t[buffer.width * buffer.height];
 
     buffer_clear(&buffer, 0);
 
+    // Create texture for presenting buffer to OpenGL
     GLuint buffer_texture;
     glGenTextures(1, &buffer_texture);
     glBindTexture(GL_TEXTURE_2D, buffer_texture);
-    //Specify pixel format we pass to the texture
-    glTexImage2D(GL_TEXTURE_2D,0, GL_RGB8,buffer.width, buffer.height, 0,GL_RGB, GL_UNSIGNED_INT_8_8_8_8, buffer.data);
-    //Tells GPU not to apply any filtering when reading pixels
+    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB8, buffer.width, buffer.height, 0, GL_RGBA, GL_UNSIGNED_INT_8_8_8_8, buffer.data);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-    //Use value at edges if it reads beyond the texture bounds
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    //Vertex Array Object, draw 3 vertices?
+
+    // Create vao for generating fullscreen triangle
     GLuint fullscreen_triangle_vao;
     glGenVertexArrays(1, &fullscreen_triangle_vao);
 
-    // Shaders
+
     // Create shader for displaying buffer
     static const char* fragment_shader =
         "\n"
@@ -202,33 +212,36 @@ int main(int argc, char* argv[]) {
         "    gl_Position = vec4(2.0 * TexCoord - 1.0, 0.0, 1.0);\n"
         "}\n";
 
-    //Compile shaders into code
     GLuint shader_id = glCreateProgram();
 
-    //Vertex Shader
     {
+        //Create vertex shader
         GLuint shader_vp = glCreateShader(GL_VERTEX_SHADER);
+
         glShaderSource(shader_vp, 1, &vertex_shader, 0);
         glCompileShader(shader_vp);
         validate_shader(shader_vp, vertex_shader);
         glAttachShader(shader_id, shader_vp);
+
         glDeleteShader(shader_vp);
     }
 
-    //Fragment Shader
     {
+        //Create fragment shader
         GLuint shader_fp = glCreateShader(GL_FRAGMENT_SHADER);
+
         glShaderSource(shader_fp, 1, &fragment_shader, 0);
         glCompileShader(shader_fp);
         validate_shader(shader_fp, fragment_shader);
         glAttachShader(shader_id, shader_fp);
+
         glDeleteShader(shader_fp);
     }
 
     glLinkProgram(shader_id);
 
-    if (!validate_program(shader_id)) {
-        fprintf(stderr, "Validating Shader failed.\n");
+    if(!validate_program(shader_id)){
+        fprintf(stderr, "Error while validating shader.\n");
         glfwTerminate();
         glDeleteVertexArrays(1, &fullscreen_triangle_vao);
         delete[] buffer.data;
@@ -236,23 +249,23 @@ int main(int argc, char* argv[]) {
     }
 
     glUseProgram(shader_id);
-    // Attach texture to uniform sampler2d
 
     GLint location = glGetUniformLocation(shader_id, "buffer");
     glUniform1i(location, 0);
 
-    //Buffer Display
+
+    //OpenGL setup
     glDisable(GL_DEPTH_TEST);
     glActiveTexture(GL_TEXTURE0);
 
     glBindVertexArray(fullscreen_triangle_vao);
-    //glDrawArrays(GL_TRIANGLES, 0, 3);
 
-
+    // Prepare game
     Sprite alien_sprite;
     alien_sprite.width = 11;
     alien_sprite.height = 8;
-    alien_sprite.data = new uint8_t[88] {
+    alien_sprite.data = new uint8_t[88]
+    {
         0,0,1,0,0,0,0,0,1,0,0, // ..@.....@..
         0,0,0,1,0,0,0,1,0,0,0, // ...@...@...
         0,0,1,1,1,1,1,1,1,0,0, // ..@@@@@@@..
@@ -284,7 +297,6 @@ int main(int argc, char* argv[]) {
         glfwPollEvents();
     }
 
-
     glfwDestroyWindow(window);
     glfwTerminate();
 
@@ -292,5 +304,6 @@ int main(int argc, char* argv[]) {
 
     delete[] alien_sprite.data;
     delete[] buffer.data;
+
     return 0;
 }
