@@ -135,6 +135,31 @@ struct SpriteAnimation {
     size_t time;
     Sprite** frames;
 };
+
+// Event handler
+typedef void(*GLFWkeyfun)(GLFWwindow*, int, int, int, int);
+
+bool game_running = false;
+int move_dir = 0;
+
+void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
+    switch(key){
+        case GLFW_KEY_ESCAPE:
+            if (action == GLFW_PRESS) game_running = false;
+            break;
+        case GLFW_KEY_RIGHT:
+            if (action == GLFW_PRESS) move_dir += 1;
+            else if (action == GLFW_RELEASE) move_dir -= 1;
+            break;
+        case GLFW_KEY_LEFT:
+            if (action == GLFW_PRESS) move_dir -= 1;
+            else if (action == GLFW_RELEASE) move_dir += 1;
+            break;
+        default:
+            break;
+    }
+}
+
 int main(int argc, char* argv[])
 {
     const size_t buffer_width = 224;
@@ -350,8 +375,11 @@ int main(int argc, char* argv[])
     glfwSwapInterval(1);
     const uint32_t clear_color = rgb_to_uint32(0, 0, 0);
     int player_move_dir = 1;
-    while (!glfwWindowShouldClose(window))
+    game_running = true;
+
+    while (!glfwWindowShouldClose(window) && game_running)
     {
+        glfwSetKeyCallback(window, key_callback);
         buffer_clear(&buffer, clear_color);
         for(size_t ai = 0; ai < game.num_aliens; ++ai)
         {
@@ -378,18 +406,17 @@ int main(int argc, char* argv[])
                 alien_animation = nullptr;
             }
         }
-        if(game.player.x + player_sprite.width + player_move_dir >= game.width - 1)
-        {
-            game.player.x = game.width - player_sprite.width - player_move_dir - 1;
-            player_move_dir *= -1;
-        }
-        else if((int)game.player.x + player_move_dir <= 0)
-        {
-            game.player.x = 0;
-            player_move_dir *= -1;
-        }
-        else game.player.x += player_move_dir;
 
+        int player_move_dir = 2 * move_dir;
+        if (player_move_dir != 0) {
+            if(game.player.x + player_sprite.width + player_move_dir >= game.width){
+                game.player.x = game.width - player_sprite.width;
+            }
+            else if((int)game.player.x + player_move_dir <= 0){
+                game.player.x = 0;
+            }
+            else game.player.x += player_move_dir;
+        }
         glTexSubImage2D(
             GL_TEXTURE_2D, 0, 0, 0,
             buffer.width, buffer.height,
