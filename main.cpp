@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-
+// to do, sounds, alien shoot back, alien blow up animation, host on github, 
 #define GL_ERROR_CASE(glerror)\
     case glerror: snprintf(error, sizeof(error), "%s", #glerror)
 
@@ -99,10 +99,6 @@ bool sprite_overlap_check(
     const Sprite& sp_b, size_t x_b, size_t y_b
 )
 {
-    // NOTE: For simplicity we just check for overlap of the sprite
-    // rectangles. Instead, if the rectangles overlap, we should
-    // further check if any pixel of sprite A overlap with any of
-    // sprite B.
     if(x_a < x_b + sp_b.width && x_a + sp_a.width > x_b &&
        y_a < y_b + sp_b.height && y_a + sp_a.height > y_b)
     {
@@ -153,7 +149,6 @@ int main(int argc, char* argv[])
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
 
-    /* Create a windowed mode window and its OpenGL context */
     GLFWwindow* window = glfwCreateWindow(buffer_width, buffer_height, "Space Invaders", NULL, NULL);
     if(!window)
     {
@@ -182,7 +177,6 @@ int main(int argc, char* argv[])
 
     glClearColor(1.0, 0.0, 0.0, 1.0);
 
-    // Create graphics buffer
     Buffer buffer;
     buffer.width  = buffer_width;
     buffer.height = buffer_height;
@@ -190,7 +184,6 @@ int main(int argc, char* argv[])
 
     buffer_clear(&buffer, 0);
 
-    // Create texture for presenting buffer to OpenGL
     GLuint buffer_texture;
     glGenTextures(1, &buffer_texture);
     glBindTexture(GL_TEXTURE_2D, buffer_texture);
