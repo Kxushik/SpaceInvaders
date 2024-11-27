@@ -2,7 +2,7 @@
 #include <cstdint>
 #include <GL/glew.h>
 #include <GLFW/glfw3.h>
-// to do, sounds, alien shoot back, alien blow up animation, host on github, 
+// to do, sounds, alien shoot back, alien blow up animation, host on github,
 #define GL_ERROR_CASE(glerror)\
     case glerror: snprintf(error, sizeof(error), "%s", #glerror)
 
@@ -25,7 +25,7 @@ inline void gl_debug(const char *file, int line) {
 }
 
 #undef GL_ERROR_CASE
-
+#define GAME_MAX_BULLETS 128
 void validate_shader(GLuint shader, const char *file = 0){
     static const unsigned int BUFFER_SIZE = 512;
     char buffer[BUFFER_SIZE];
@@ -80,12 +80,20 @@ struct Player {
     size_t life;
 };
 
+struct Bullet {
+    size_t x, y;
+    int dir;
+};
+
 struct Game {
     size_t width, height;
     size_t num_aliens;
+    size_t num_bullets;
     Alien* aliens;
     Player player;
+    Bullet bullets[GAME_MAX_BULLETS];
 };
+
 void buffer_clear(Buffer* buffer, uint32_t color)
 {
     for(size_t i = 0; i < buffer->width * buffer->height; ++i)
@@ -141,6 +149,7 @@ typedef void(*GLFWkeyfun)(GLFWwindow*, int, int, int, int);
 
 bool game_running = false;
 int move_dir = 0;
+bool fire_pressed =0;
 
 void key_callback(GLFWwindow* window, int key, int scancode, int action, int mods) {
     switch(key){
@@ -155,13 +164,15 @@ void key_callback(GLFWwindow* window, int key, int scancode, int action, int mod
             if (action == GLFW_PRESS) move_dir -= 1;
             else if (action == GLFW_RELEASE) move_dir += 1;
             break;
+        case GLFW_KEY_SPACE:
+            if (action == GLFW_RELEASE) fire_pressed = true;
+            break;
         default:
             break;
     }
 }
 
-int main(int argc, char* argv[])
-{
+int main(int argc, char* argv[]) {
     const size_t buffer_width = 224;
     const size_t buffer_height = 256;
 
@@ -354,12 +365,22 @@ int main(int argc, char* argv[])
         1,1,1,1,1,1,1,1,1,1,1, // @@@@@@@@@@@
     };
 
+    Sprite bullet_sprite;
+    bullet_sprite.width = 1;
+    bullet_sprite.height = 3;
+    bullet_sprite.data = new uint8_t[33] {
+        1,
+        1,
+        1
+    };
 
     Game game;
     game.width = buffer_width;
     game.height = buffer_height;
     game.num_aliens = 55;
+    game.num_bullets = 0;
     game.aliens = new Alien[game.num_aliens];
+
 
     game.player.x = 112 - 5;
     game.player.y = 32;
@@ -379,8 +400,15 @@ int main(int argc, char* argv[])
 
     while (!glfwWindowShouldClose(window) && game_running)
     {
+
         glfwSetKeyCallback(window, key_callback);
         buffer_clear(&buffer, clear_color);
+        for (size_t bi = 0; bi < game.num_bullets; ++bi) {
+            const Bullet& bullet = game.bullets[bi];
+            const Sprite& sprite = bullet_sprite;
+            buffer_draw_sprite(&buffer, sprite, bullet.x, bullet.y, rgb_to_uint32(255, 255, 0));
+
+        }
         for(size_t ai = 0; ai < game.num_aliens; ++ai)
         {
             const Alien& alien = game.aliens[ai];
@@ -394,8 +422,18 @@ int main(int argc, char* argv[])
             const Sprite& sprite = *alien_animation->frames[current_frame];
             buffer_draw_sprite(&buffer, sprite, alien.x, alien.y, rgb_to_uint32(128, 0, 0));
         }
+
         buffer_draw_sprite(&buffer, player_sprite, game.player.x, game.player.y, rgb_to_uint32(128, 0, 0));
-        //buffer_draw_sprite(&buffer, alien_sprite, 112, 128, rgb_to_uint32(255, 0, 255));
+
+        glTexSubImage2D(
+            GL_TEXTURE_2D, 0, 0, 0,
+            buffer.width, buffer.height,
+            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
+            buffer.data
+        );
+        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
+        glfwSwapBuffers(window);
+
         ++alien_animation->time;
         if(alien_animation->time == alien_animation->num_frames * alien_animation->frame_duration)
         {
@@ -405,6 +443,20 @@ int main(int argc, char* argv[])
                 delete alien_animation;
                 alien_animation = nullptr;
             }
+        }
+
+        for(size_t bi = 0; bi < game.num_bullets;)
+        {
+            game.bullets[bi].y += game.bullets[bi].dir;
+            if(game.bullets[bi].y >= game.height ||
+               game.bullets[bi].y < bullet_sprite.height)
+            {
+                game.bullets[bi] = game.bullets[game.num_bullets - 1];
+                --game.num_bullets;
+                continue;
+            }
+
+            ++bi;
         }
 
         int player_move_dir = 2 * move_dir;
@@ -417,15 +469,17 @@ int main(int argc, char* argv[])
             }
             else game.player.x += player_move_dir;
         }
-        glTexSubImage2D(
-            GL_TEXTURE_2D, 0, 0, 0,
-            buffer.width, buffer.height,
-            GL_RGBA, GL_UNSIGNED_INT_8_8_8_8,
-            buffer.data
-        );
-        glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
-
-        glfwSwapBuffers(window);
+        if (fire_pressed) {
+            printf("Firing bullet at (%zu, %zu)\n", game.player.x, game.player.y);
+        }
+        if(fire_pressed && game.num_bullets < GAME_MAX_BULLETS)
+        {
+            game.bullets[game.num_bullets].x = game.player.x + player_sprite.width / 2;
+            game.bullets[game.num_bullets].y = game.player.y + player_sprite.height;
+            game.bullets[game.num_bullets].dir = 2;
+            ++game.num_bullets;
+        }
+        fire_pressed = false;
 
         glfwPollEvents();
     }
